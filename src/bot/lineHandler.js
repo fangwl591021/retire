@@ -83,25 +83,36 @@ export const handleLineEvents = async (env, events) => {
       try {
         if (userMsg.toUpperCase().includes("ID")) { await replyLine(env, event.replyToken, `您的 ID：\n${userId}`); continue; }
         
-        // 關鍵字更新：邀約 -> 邀約好友
-        if (userMsg.includes("邀約好友")) { await sendFlexInvitation(env, event.replyToken, userId); continue; }
-        if (userMsg.includes("專區") || userMsg.includes("會員")) { await replyLine(env, event.replyToken, `🔗 您的專屬會員中心：\nhttps://bonus-system.fangwl591021.workers.dev/portal`); continue; }
+        // 【關鍵修復】全面改用精準比對 (===) 或陣列包含，防止「邀約統計」誤觸發「邀約」
+        if (userMsg === "邀約好友" || userMsg === "邀約") { 
+          await sendFlexInvitation(env, event.replyToken, userId); 
+          continue; 
+        }
         
-        // 關鍵字更新：獎金 -> 績效統計
-        if (userMsg.includes("績效統計")) { await showMyBonuses(env, event.replyToken, userId); continue; }
+        if (userMsg === "專區" || userMsg === "會員" || userMsg === "會員專區") { 
+          await replyLine(env, event.replyToken, `🔗 您的專屬會員中心：\nhttps://bonus-system.fangwl591021.workers.dev/portal`); 
+          continue; 
+        }
         
-        // 關鍵字更新：組織 -> 邀約統計
-        if (userMsg.includes("邀約統計")) { await showMyStatus(env, event.replyToken, userId); continue; }
+        if (userMsg === "績效統計" || userMsg === "獎金") { 
+          await showMyBonuses(env, event.replyToken, userId); 
+          continue; 
+        }
+        
+        if (userMsg === "邀約統計" || userMsg === "組織" || userMsg === "狀態") { 
+          await showMyStatus(env, event.replyToken, userId); 
+          continue; 
+        }
 
         if (userId === SUPER_ADMIN) {
-          if (userMsg.includes("系統初始化")) {
+          if (userMsg === "系統初始化") {
             await env.BONUS_KV.put("config:admin_uid", userId);
             let adminName = await getLineProfile(env, userId) || "系統管理員";
             await processAddMember(env.BONUS_KV, userId, "ROOT", adminName, "0900000000", adminName, "M", "", "");
             await replyLine(env, event.replyToken, "✅ 系統管理員權限已重置。");
-          } else if (userMsg.includes("後台")) {
+          } else if (userMsg === "後台") {
             await replyLine(env, event.replyToken, `🔗 管理中心網址：\nhttps://bonus-system.fangwl591021.workers.dev/admin`);
-          } else if (userMsg.includes("待核准")) {
+          } else if (userMsg === "待核准") {
             await listPendingApplications(env, event.replyToken);
           } else if (userMsg.startsWith("核准 ")) {
             const tid = userMsg.replace("核准 ", "").trim();
@@ -112,7 +123,7 @@ export const handleLineEvents = async (env, events) => {
           }
           continue;
         }
-        await replyLine(env, event.replyToken, "您好，您可以輸入「專區」進入您的會員中心，或點擊好友的邀約連結加入我們。");
+        await replyLine(env, event.replyToken, "您好，您可以輸入「專區」進入您的會員中心，或輸入「邀約好友」取得專屬名片。");
       } catch (err) { console.error(err); }
     }
   }
