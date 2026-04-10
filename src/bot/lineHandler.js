@@ -34,24 +34,24 @@ export const showMyBonuses = async (env, replyToken, userId) => {
   });
 
   const flex = { "type": "bubble", "body": { "type": "box", "layout": "vertical", "contents": [
-    { "type": "text", "text": "總結算獎金 (可提領)", "size": "xs", "color": "#000000" }, 
+    { "type": "text", "text": "總結算金額 (可提領)", "size": "xs", "color": "#000000" }, 
     { "type": "text", "text": `$${clearedTotal}`, "size": "xxl", "margin": "sm", "color": "#00b900" },
     { "type": "box", "layout": "horizontal", "margin": "md", "contents": [
-      { "type": "text", "text": "處理中獎金 (14天內)", "size": "xs", "color": "#000000" },
+      { "type": "text", "text": "處理中金額 (14天內)", "size": "xs", "color": "#000000" },
       { "type": "text", "text": `$${pendingTotal}`, "size": "xs", "align": "end", "color": "#f59e0b" }
     ]},
     { "type": "separator", "margin": "lg" }, 
     { "type": "text", "text": "近期明細 (5筆)", "size": "xs", "color": "#000000", "margin": "lg" }, 
     ...contents
   ] } };
-  return await postToLine(env, { replyToken, messages: [{ type: "flex", altText: "獎金查詢", contents: flex }] });
+  return await postToLine(env, { replyToken, messages: [{ type: "flex", altText: "績效統計", contents: flex }] });
 };
 
 export const showMyStatus = async (env, replyToken, userId) => {
   const user = await env.BONUS_KV.get(`user:${userId}`, "json");
   if (!user) return replyLine(env, replyToken, "尚未查獲會員資料。");
-  const flex = { "type": "bubble", "body": { "type": "box", "layout": "vertical", "contents": [{ "type": "text", "text": "組織發展狀態", "size": "xs", "color": "#000000" }, { "type": "box", "layout": "horizontal", "margin": "md", "contents": [{ "type": "text", "text": "獨立狀態", "size": "sm", "color": "#000000" }, { "type": "text", "text": user.is_independent ? "已獨立" : "未獨立", "size": "sm", "align": "end", "color": "#000000" }] }, { "type": "box", "layout": "horizontal", "margin": "sm", "contents": [{ "type": "text", "text": "下線安置", "size": "sm", "color": "#000000" }, { "type": "text", "text": (user.left_leg ? '●' : '○') + ' / ' + (user.right_leg ? '●' : '○'), "size": "sm", "align": "end", "color": "#000000" }] }] } };
-  return await postToLine(env, { replyToken, messages: [{ type: "flex", altText: "組織狀態", contents: flex }] });
+  const flex = { "type": "bubble", "body": { "type": "box", "layout": "vertical", "contents": [{ "type": "text", "text": "邀約統計狀態", "size": "xs", "color": "#000000" }, { "type": "box", "layout": "horizontal", "margin": "md", "contents": [{ "type": "text", "text": "獨立狀態", "size": "sm", "color": "#000000" }, { "type": "text", "text": user.is_independent ? "已獨立" : "未獨立", "size": "sm", "align": "end", "color": "#000000" }] }, { "type": "box", "layout": "horizontal", "margin": "sm", "contents": [{ "type": "text", "text": "下線安置", "size": "sm", "color": "#000000" }, { "type": "text", "text": (user.left_leg ? '●' : '○') + ' / ' + (user.right_leg ? '●' : '○'), "size": "sm", "align": "end", "color": "#000000" }] }] } };
+  return await postToLine(env, { replyToken, messages: [{ type: "flex", altText: "邀約統計", contents: flex }] });
 };
 
 export const listPendingApplications = async (env, replyToken) => {
@@ -82,10 +82,16 @@ export const handleLineEvents = async (env, events) => {
       const userId = event.source.userId;
       try {
         if (userMsg.toUpperCase().includes("ID")) { await replyLine(env, event.replyToken, `您的 ID：\n${userId}`); continue; }
-        if (userMsg.includes("邀約")) { await sendFlexInvitation(env, event.replyToken, userId); continue; }
+        
+        // 關鍵字更新：邀約 -> 邀約好友
+        if (userMsg.includes("邀約好友")) { await sendFlexInvitation(env, event.replyToken, userId); continue; }
         if (userMsg.includes("專區") || userMsg.includes("會員")) { await replyLine(env, event.replyToken, `🔗 您的專屬會員中心：\nhttps://bonus-system.fangwl591021.workers.dev/portal`); continue; }
-        if (userMsg.includes("獎金")) { await showMyBonuses(env, event.replyToken, userId); continue; }
-        if (userMsg.includes("組織") || userMsg.includes("狀態")) { await showMyStatus(env, event.replyToken, userId); continue; }
+        
+        // 關鍵字更新：獎金 -> 績效統計
+        if (userMsg.includes("績效統計")) { await showMyBonuses(env, event.replyToken, userId); continue; }
+        
+        // 關鍵字更新：組織 -> 邀約統計
+        if (userMsg.includes("邀約統計")) { await showMyStatus(env, event.replyToken, userId); continue; }
 
         if (userId === SUPER_ADMIN) {
           if (userMsg.includes("系統初始化")) {
@@ -102,7 +108,7 @@ export const handleLineEvents = async (env, events) => {
             await approveApplication(env.BONUS_KV, tid);
             await replyLine(env, event.replyToken, `✅ 已確認收款並開通會員。`);
           } else {
-            await replyLine(env, event.replyToken, "您可以輸入以下指令：\n- 邀約：發送名片\n- 專區：進入會員專區\n- 獎金：查詢餘額\n- 組織：查看狀態\n- 後台：開啟管理網頁\n- 待核准：列出新報單");
+            await replyLine(env, event.replyToken, "您可以輸入以下指令：\n- 邀約好友：發送名片\n- 專區：進入會員專區\n- 績效統計：查詢明細\n- 邀約統計：查看狀態\n- 後台：開啟管理網頁\n- 待核准：列出新報單");
           }
           continue;
         }
